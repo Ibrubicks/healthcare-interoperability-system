@@ -7,7 +7,7 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
 const ProtectedRoute = ({ children, requiredRoles = [], requiredPermission = null }) => {
-  const { user, loading } = useAuth();
+  const { user, loading, hasPermission } = useAuth();
   const location = useLocation();
 
   if (loading) {
@@ -44,20 +44,17 @@ const ProtectedRoute = ({ children, requiredRoles = [], requiredPermission = nul
   }
 
   // Check if user has required permission
-  if (requiredPermission) {
-    const { hasPermission } = useAuth();
-    if (!hasPermission(requiredPermission)) {
-      return (
-        <div style={{ 
-          padding: '20px', 
-          textAlign: 'center',
-          color: '#d32f2f'
-        }}>
-          <h2>Access Denied</h2>
-          <p>You don't have the required permission: {requiredPermission}</p>
-        </div>
-      );
-    }
+  if (requiredPermission && !hasPermission(requiredPermission)) {
+    return (
+      <div style={{ 
+        padding: '20px', 
+        textAlign: 'center',
+        color: '#d32f2f'
+      }}>
+        <h2>Access Denied</h2>
+        <p>You don't have the required permission: {requiredPermission}</p>
+      </div>
+    );
   }
 
   return children;

@@ -4,7 +4,7 @@ Authentication and Security Utilities - HIPAA Compliant
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
 from jose import JWTError, jwt
-from passlib.context import CryptContext
+import bcrypt
 from fastapi import HTTPException, status
 from cryptography.fernet import Fernet
 import secrets
@@ -20,9 +20,6 @@ SESSION_TIMEOUT_MINUTES = 30
 MAX_FAILED_ATTEMPTS = 5
 ACCOUNT_LOCKOUT_MINUTES = 30
 
-# Password hashing context
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
 # Field-level encryption key (In production, use proper key management)
 ENCRYPTION_KEY = Fernet.generate_key()
 cipher_suite = Fernet(ENCRYPTION_KEY)
@@ -32,11 +29,16 @@ cipher_suite = Fernet(ENCRYPTION_KEY)
 # ==========================================
 def hash_password(password: str) -> str:
     """Hash password using bcrypt"""
-    return pwd_context.hash(password)
+    password_bytes = password.encode('utf-8')
+    salt = bcrypt.gensalt()
+    hashed = bcrypt.hashpw(password_bytes, salt)
+    return hashed.decode('utf-8')
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify password against hash"""
-    return pwd_context.verify(plain_password, hashed_password)
+    password_bytes = plain_password.encode('utf-8')
+    hashed_bytes = hashed_password.encode('utf-8')
+    return bcrypt.checkpw(password_bytes, hashed_bytes)
 
 def validate_password_strength(password: str) -> tuple[bool, str]:
     """

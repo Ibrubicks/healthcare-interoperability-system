@@ -12,24 +12,21 @@ const Dashboard = () => {
   const { user, logout, hasPermission, hasRole } = useAuth();
   const navigate = useNavigate();
   const [stats, setStats] = useState(null);
-  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     // Fetch system stats if user is admin
     if (hasRole('ADMIN')) {
       loadStats();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadStats = async () => {
     try {
-      setLoading(true);
       const data = await apiService.getSystemStats();
       setStats(data);
     } catch (error) {
       console.error('Error loading stats:', error);
-    } finally {
-      setLoading(false);
     }
   };
 
