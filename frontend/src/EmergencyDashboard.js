@@ -3,146 +3,212 @@ import axios from 'axios';
 import './EmergencyDashboard.css';
 
 const EmergencyDashboard = () => {
-    const [firstName, setFirstName] = useState('');
-    const [lastName, setLastName] = useState('');
-    const [dob, setDob] = useState('');
-    const [patientData, setPatientData] = useState(null);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [dob, setDob] = useState('');
+  const [patientData, setPatientData] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-    const handleSearch = async (e) => {
-        e.preventDefault();
-        setLoading(true);
-        setError('');
+  // Convert MM/DD/YYYY to YYYY-MM-DD
+  const convertDateFormat = (dateStr) => {
+    if (!dateStr) return '';
+    
+    // Check if format is MM/DD/YYYY
+    const mmddyyyyRegex = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/;
+    const match = dateStr.match(mmddyyyyRegex);
+    
+    if (match) {
+      const [, month, day, year] = match;
+      return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    }
+    
+    // If already YYYY-MM-DD, return as is
+    return dateStr;
+  };
 
-        try {
-            const response = await axios.get('http://localhost:8000/api/emergency-search', {
-                params: {
-                    first_name: firstName,
-                    last_name: lastName,
-                    dob: dob
-                }
-            });
-            setPatientData(response.data);
-            
-            // Log access for HIPAA audit
-            await axios.post('http://localhost:8000/api/log-access', null, {
-                params: {
-                    user_id: 'EMERGENCY_STAFF',
-                    patient_id: response.data.patient.patient_id,
-                    purpose: 'Emergency lookup - Unconscious patient',
-                    ip_address: '192.168.1.1'
-                }
-            });
-        } catch (err) {
-            setError(err.response?.data?.detail || 'Patient not found');
-            setPatientData(null);
-        } finally {
-            setLoading(false);
-        }
-    };
+  const handleSearch = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+    setPatientData(null);
 
-    return (
-        <div className="dashboard-container">
-            <header className="dashboard-header">
-                <h1>🚨 EMERGENCY PATIENT LOOKUP</h1>
-                <p>Unified Medical Records - Multiple Hospital Systems</p>
-            </header>
+    try {
+      // Convert date format before sending
+      const formattedDob = convertDateFormat(dob);
+      
+      const response = await axios.get('http://localhost:8000/api/emergency-search', {
+        params: {
+          first_name: firstName,
+          last_name: lastName,
+          dob: formattedDob,
+        },
+      });
 
-            <div className="search-box">
-                <form onSubmit={handleSearch}>
-                    <input
-                        type="text"
-                        placeholder="First Name"
-                        value={firstName}
-                        onChange={(e) => setFirstName(e.target.value)}
-                        required
-                    />
-                    <input
-                        type="text"
-                        placeholder="Last Name"
-                        value={lastName}
-                        onChange={(e) => setLastName(e.target.value)}
-                        required
-                    />
-                    <input
-                        type="date"
-                        value={dob}
-                        onChange={(e) => setDob(e.target.value)}
-                        required
-                    />
-                    <button type="submit" disabled={loading}>
-                        {loading ? 'Searching...' : 'SEARCH'}
-                    </button>
-                </form>
+      setPatientData(response.data);
+
+      // Log access
+      axios.post('http://localhost:8000/api/log-access', null, {
+        params: {
+          user_id: 'EMERGENCY_STAFF',
+          patient_id: response.data.patient.patient_id,
+          purpose: 'Emergency lookup',
+          ip_address: '127.0.0.1',
+        },
+      });
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Patient not found');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="app-container">
+      <header className="red-header">
+        <span className="pulse-icon">📡</span>
+        <h1>EMERGENCY PATIENT LOOKUP</h1>
+        <p>Unified Medical Records – Multiple Hospital Systems</p>
+      </header>
+
+      <div className="content-box">
+        <div className="quote-section">
+          <p className="quote">"Every second counts. Fast, accurate patient data saves lives."</p>
+        </div>
+
+        <form className="search-box" onSubmit={handleSearch}>
+          <div className="form-row">
+            <div className="form-field">
+              <label>First Name</label>
+              <input
+                type="text"
+                placeholder="John"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                required
+                autoFocus
+              />
             </div>
 
-            {error && <div className="error-box">{error}</div>}
+            <div className="form-field">
+              <label>Last Name</label>
+              <input
+                type="text"
+                placeholder="Smith"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                required
+              />
+            </div>
 
-            {patientData && (
-                <div className="patient-results">
-                    
-                    {/* PATIENT INFO CARD */}
-                    <div className="card patient-info">
-                        <h2>👤 PATIENT INFORMATION</h2>
-                        <p><strong>ID:</strong> {patientData.patient.patient_id}</p>
-                        <p><strong>Name:</strong> {patientData.patient.first_name} {patientData.patient.last_name}</p>
-                        <p><strong>DOB:</strong> {patientData.patient.date_of_birth}</p>
-                        <p><strong>Gender:</strong> {patientData.patient.gender}</p>
-                        <p><strong>Phone:</strong> {patientData.patient.phone}</p>
-                        <p><strong>Emergency Contact:</strong> {patientData.patient.emergency_contact}</p>
-                        <p><strong>Records in:</strong> {patientData.patient.num_hospitals} Hospitals</p>
-                    </div>
+            <div className="form-field">
+              <label>Date of Birth</label>
+              <input
+                type="text"
+                placeholder="MM/DD/YYYY or YYYY-MM-DD"
+                value={dob}
+                onChange={(e) => setDob(e.target.value)}
+                required
+              />
+            </div>
+          </div>
 
-                    {/* CRITICAL ALERTS - HIGHEST PRIORITY */}
-                    {patientData.alerts.length > 0 && (
-                        <div className="card critical-alerts">
-                            <h2>⚠️ CRITICAL ALERTS</h2>
-                            {patientData.alerts.map((alert) => (
-                                <div key={alert.alert_id} className={`alert alert-${alert.severity.toLowerCase()}`}>
-                                    <span className="severity-badge">{alert.severity}</span>
-                                    <strong>{alert.type}:</strong> {alert.description}
-                                </div>
-                            ))}
-                        </div>
-                    )}
+          <button type="submit" className="search-btn" disabled={loading}>
+            {loading ? <span className="spinner"></span> : '🔍'} SEARCH
+          </button>
+        </form>
 
-                    {/* HOSPITAL RECORDS */}
-                    <div className="card hospital-records">
-                        <h2>🏥 HOSPITAL RECORDS</h2>
-                        {patientData.hospital_records.map((record, idx) => (
-                            <div key={idx} className="hospital-record">
-                                <h3>{record.hospital}</h3>
-                                <p><strong>MRN:</strong> {record.mrn}</p>
-                                <p><strong>Last Visit:</strong> {record.last_visit}</p>
-                                
-                                {record.medications && (
-                                    <div>
-                                        <strong>Medications:</strong>
-                                        <pre className="json-display">{record.medications}</pre>
-                                    </div>
-                                )}
-                                
-                                {record.allergies && (
-                                    <div>
-                                        <strong>Allergies:</strong>
-                                        <pre className="json-display">{record.allergies}</pre>
-                                    </div>
-                                )}
-                                
-                                {record.chronic_conditions && (
-                                    <div>
-                                        <strong>Chronic Conditions:</strong>
-                                        <pre className="json-display">{record.chronic_conditions}</pre>
-                                    </div>
-                                )}
-                            </div>
-                        ))}
-                    </div>
+        {error && (
+          <div className="error-box">
+            <span>❌</span> {error}
+          </div>
+        )}
+
+        {patientData && (
+          <div className="results">
+            <section className="patient-section">
+              <h2>👤 Patient Information</h2>
+              <div className="info-grid">
+                <div>
+                  <strong>Patient ID</strong>
+                  <p>{patientData.patient.patient_id}</p>
                 </div>
+                <div>
+                  <strong>Name</strong>
+                  <p>{patientData.patient.first_name} {patientData.patient.last_name}</p>
+                </div>
+                <div>
+                  <strong>DOB</strong>
+                  <p>{patientData.patient.date_of_birth}</p>
+                </div>
+                <div>
+                  <strong>Gender</strong>
+                  <p>{patientData.patient.gender}</p>
+                </div>
+                <div>
+                  <strong>Phone</strong>
+                  <p>{patientData.patient.phone}</p>
+                </div>
+                <div>
+                  <strong>Emergency Contact</strong>
+                  <p>{patientData.patient.emergency_contact}</p>
+                </div>
+              </div>
+
+              <div className="hospital-count">
+                <span className="badge">{patientData.patient.num_hospitals}</span>
+                <span>Hospital Records Found</span>
+              </div>
+            </section>
+
+            {patientData.alerts && patientData.alerts.length > 0 && (
+              <section className="alerts-section">
+                <h2>⚠️ Critical Alerts</h2>
+                {patientData.alerts.map((alert) => (
+                  <div key={alert.alert_id} className={`alert alert-${alert.severity.toLowerCase()}`}>
+                    <div className="alert-indicator"></div>
+                    <div className="alert-content">
+                      <span className="alert-type">{alert.type}</span>
+                      <p>{alert.description}</p>
+                    </div>
+                    <span className="severity-tag">{alert.severity}</span>
+                  </div>
+                ))}
+              </section>
             )}
-        </div>
-    );
+
+            <section className="hospitals-section">
+              <h2>🏥 Hospital Records</h2>
+              {patientData.hospital_records.map((record, i) => (
+                <div key={i} className="hospital-card">
+                  <div className="hospital-title">
+                    <h3>{record.hospital}</h3>
+                    <span className="mrn-label">{record.mrn}</span>
+                    <span className="date-label">{record.last_visit}</span>
+                  </div>
+
+                  <div className="hospital-details">
+                    <div className="detail-row">
+                      <strong>Medications</strong>
+                      <code>{record.medications}</code>
+                    </div>
+                    <div className="detail-row">
+                      <strong>Allergies</strong>
+                      <code>{record.allergies}</code>
+                    </div>
+                    <div className="detail-row">
+                      <strong>Chronic Conditions</strong>
+                      <code>{record.chronic_conditions}</code>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </section>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 };
 
 export default EmergencyDashboard;
