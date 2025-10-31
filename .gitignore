@@ -21,6 +21,12 @@ package-lock.json
 .env.test.local
 .env.production.local
 
+# Security Database
+/backend/security.db
+/backend/security.db-journal
+*.db
+*.db-journal
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
