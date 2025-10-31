@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
-import axios from 'axios';
+import { useAuth } from './contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
+import apiService from './services/apiService';
 import './EmergencyDashboard.css';
 
 const EmergencyDashboard = () => {
@@ -9,6 +11,9 @@ const EmergencyDashboard = () => {
     const [patientData, setPatientData] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    
+    const { user, logout } = useAuth();
+    const navigate = useNavigate();
 
     const handleSearch = async (e) => {
         e.preventDefault();
@@ -16,24 +21,8 @@ const EmergencyDashboard = () => {
         setError('');
 
         try {
-            const response = await axios.get('http://localhost:8000/api/emergency-search', {
-                params: {
-                    first_name: firstName,
-                    last_name: lastName,
-                    dob: dob
-                }
-            });
-            setPatientData(response.data);
-            
-            // Log access for HIPAA audit
-            await axios.post('http://localhost:8000/api/log-access', null, {
-                params: {
-                    user_id: 'EMERGENCY_STAFF',
-                    patient_id: response.data.patient.patient_id,
-                    purpose: 'Emergency lookup - Unconscious patient',
-                    ip_address: '192.168.1.1'
-                }
-            });
+            const response = await apiService.emergencySearch(firstName, lastName, dob || null);
+            setPatientData(response);
         } catch (err) {
             setError(err.response?.data?.detail || 'Patient not found');
             setPatientData(null);
@@ -42,11 +31,49 @@ const EmergencyDashboard = () => {
         }
     };
 
+    const handleLogout = async () => {
+        await logout();
+        navigate('/login');
+    };
+
     return (
         <div className="dashboard-container">
             <header className="dashboard-header">
-                <h1>🚨 EMERGENCY PATIENT LOOKUP</h1>
-                <p>Unified Medical Records - Multiple Hospital Systems</p>
+                <div>
+                    <h1>🚨 EMERGENCY PATIENT LOOKUP</h1>
+                    <p>Unified Medical Records - Multiple Hospital Systems</p>
+                </div>
+                <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+                    <span style={{ color: 'white' }}>
+                        Logged in as: <strong>{user?.full_name}</strong> ({user?.role})
+                    </span>
+                    <button 
+                        onClick={() => navigate('/dashboard')} 
+                        style={{
+                            padding: '8px 16px',
+                            background: 'rgba(255,255,255,0.2)',
+                            color: 'white',
+                            border: '1px solid white',
+                            borderRadius: '4px',
+                            cursor: 'pointer'
+                        }}
+                    >
+                        Dashboard
+                    </button>
+                    <button 
+                        onClick={handleLogout}
+                        style={{
+                            padding: '8px 16px',
+                            background: 'rgba(255,255,255,0.2)',
+                            color: 'white',
+                            border: '1px solid white',
+                            borderRadius: '4px',
+                            cursor: 'pointer'
+                        }}
+                    >
+                        Logout
+                    </button>
+                </div>
             </header>
 
             <div className="search-box">
